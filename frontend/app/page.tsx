@@ -1,21 +1,44 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { Bookmark, Search, Folder, ExternalLink } from 'lucide-react';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-slate-50">
-      <div className="z-10 w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4">
-          Status: <span className="font-bold text-green-600 ml-2">Live Demo</span>
-        </p>
-      </div>
-      <div className="relative flex flex-col place-items-center text-center">
-        <h1 className="text-6xl font-bold tracking-tight text-slate-900 mb-4">LinkVault</h1>
-        <p className="text-xl text-slate-600 max-w-2xl">Bookmark Manager with Smart Organization</p>
-        <div className="mt-8 flex gap-4">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2">
-                Launch App <ArrowRight size={18} />
-            </button>
+    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
+        
+        {/* Landing Info */}
+        <div className="p-12 flex-1 flex flex-col justify-center">
+          <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center mb-6 text-white shadow-lg shadow-amber-500/30">
+            <Bookmark size={24} />
+          </div>
+          <h1 className="text-4xl font-bold text-slate-900 mb-4">Save smarter. Find faster.</h1>
+          <p className="text-slate-600 mb-8">
+            The browser extension that auto-categorizes your bookmarks using AI, so you never lose a link again.
+          </p>
+          <button className="bg-slate-900 text-white px-6 py-3 rounded-lg font-bold hover:bg-slate-800 transition w-fit">
+            Add to Chrome - Free
+          </button>
+        </div>
+
+        {/* Extension UI Sim */}
+        <div className="bg-slate-50 p-8 flex-1 border-l border-slate-200 flex items-center justify-center relative">
+          <div className="bg-white w-64 rounded-lg shadow-xl border border-slate-300 overflow-hidden absolute top-10 right-10 rotate-[-5deg]">
+             <div className="bg-amber-500 p-3 flex justify-between items-center text-white">
+                <span className="font-bold text-sm">LinkVault</span>
+                <Search size={14}/>
+             </div>
+             <div className="p-2 space-y-2">
+                <div className="text-xs font-bold text-slate-400 uppercase mt-2 mb-1">Recent Saves</div>
+                <div className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                   <Folder size={14} className="text-blue-500"/>
+                   <div className="text-xs truncate">React Documentation</div>
+                </div>
+                <div className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded cursor-pointer">
+                   <Folder size={14} className="text-purple-500"/>
+                   <div className="text-xs truncate">Design Inspiration 2024</div>
+                </div>
+             </div>
+          </div>
         </div>
       </div>
     </main>
