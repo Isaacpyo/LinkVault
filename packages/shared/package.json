@@ -1,0 +1,18 @@
+{
+  "name": "@linkvault/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Schemas, DTO types and pure helpers shared by the LinkVault API, web app and extension.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  }
+}
