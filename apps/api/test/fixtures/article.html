@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Building a Tiny Search Engine | Example Engineering Blog</title>
+    <meta name="description" content="How inverted indexes, analyzers and BM25 fit together." />
+    <meta property="og:site_name" content="Example Engineering" />
+    <style>
+      body {
+        font-family: serif;
+      }
+    </style>
+    <script>
+      window.tracking = true;
+    </script>
+  </head>
+  <body>
+    <nav><a href="/">Home</a> <a href="/about">About</a> <a href="/archive">Archive</a></nav>
+    <header><h1>Example Engineering</h1></header>
+    <main>
+      <article>
+        <h1>Building a Tiny Search Engine</h1>
+        <p class="byline">By Ada Example</p>
+        <p>
+          Every search engine starts with an <strong>inverted index</strong>: a map from each term to the documents that
+          contain it. Building one is the quickest way to understand why full-text search is fast even across millions
+          of documents, because a query only touches the posting lists for the terms it mentions.
+        </p>
+        <p>
+          Before terms reach the index they pass through an analyzer. The analyzer splits text into tokens, lower-cases
+          them, removes very common stop words and reduces words to a stem, so that "indexing", "indexed" and "indexes"
+          all match a query for "index". The same analyzer must run at query time, otherwise nothing lines up.
+        </p>
+        <p>
+          Ranking decides which matching documents come first. The classic choice is BM25, which rewards documents that
+          mention rare query terms several times while penalizing very long documents. Field boosts let a title match
+          count for more than a match deep in the body.
+        </p>
+        <p>
+          Finally, highlighting shows the user why a result matched. The engine returns short fragments with the query
+          terms marked, and the interface renders them as snippets. The flamingo test: search for an unusual word like
+          flamingo and check that the snippet shows it in context.
+        </p>
+        <img src="/images/diagram.png" alt="Inverted index diagram" onerror="alert('xss')" />
+        <p><a href="javascript:alert(1)">Bad link</a> and <a href="/docs/analyzers">a relative link</a>.</p>
+        <iframe src="https://ads.example.com/frame"></iframe>
+      </article>
+    </main>
+    <footer>Copyright Example Engineering. <a href="/privacy">Privacy</a></footer>
+  </body>
+</html>
