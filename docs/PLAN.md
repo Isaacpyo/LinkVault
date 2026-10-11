@@ -1,6 +1,7 @@
 # LinkVault — build plan
 
-> Status: this is the plan written before building the MVP. The README describes what shipped.
+> Status: this is the plan written before building the MVP. The README describes what shipped, including changes made
+> after review (worker-thread extraction, tighter size caps, stopword-aware search fields, hand-off confirmation).
 
 ## Starting point
 
