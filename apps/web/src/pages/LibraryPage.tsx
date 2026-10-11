@@ -132,6 +132,7 @@ export function LibraryPage() {
                   key={facet.tag}
                   type="button"
                   onClick={() => toggleTag(facet.tag)}
+                  aria-label={`Narrow to tag ${facet.tag} (${facet.count})`}
                   className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs text-slate-600 hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-200"
                 >
                   #{facet.tag} <span className="text-slate-400">{facet.count}</span>
