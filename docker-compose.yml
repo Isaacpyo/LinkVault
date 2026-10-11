@@ -13,10 +13,13 @@ services:
       DISABLE_SECURITY_PLUGIN: 'true'
       DISABLE_INSTALL_DEMO_CONFIG: 'true'
       OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+      # Dev cluster: don't block writes when the host disk is nearly full.
+      cluster.routing.allocation.disk.threshold_enabled: 'false'
     volumes:
       - opensearch-data:/usr/share/opensearch/data
+    # Security is disabled for local development, so only expose it on this machine.
     ports:
-      - '9200:9200'
+      - '127.0.0.1:9200:9200'
     healthcheck:
       test: ['CMD-SHELL', 'curl -fs http://localhost:9200/_cluster/health || exit 1']
       interval: 10s

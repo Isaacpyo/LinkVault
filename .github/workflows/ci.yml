@@ -24,6 +24,8 @@ jobs:
           DISABLE_SECURITY_PLUGIN: 'true'
           DISABLE_INSTALL_DEMO_CONFIG: 'true'
           OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+          # Runners have little free disk; don't let watermarks block index creation.
+          cluster.routing.allocation.disk.threshold_enabled: 'false'
         ports:
           - 9200:9200
         options: >-
@@ -72,6 +74,8 @@ jobs:
           DISABLE_SECURITY_PLUGIN: 'true'
           DISABLE_INSTALL_DEMO_CONFIG: 'true'
           OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+          # Runners have little free disk; don't let watermarks block index creation.
+          cluster.routing.allocation.disk.threshold_enabled: 'false'
         ports:
           - 9200:9200
         options: >-

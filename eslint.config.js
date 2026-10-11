@@ -30,6 +30,7 @@ export default tseslint.config(
       'apps/api/**/*.ts',
       'packages/**/*.ts',
       'e2e/**/*.{ts,mjs}',
+      '**/test/fixtures/**/*.mjs',
       '*.config.{js,ts}',
       '**/scripts/**/*.{js,mjs}',
     ],
