@@ -26,6 +26,11 @@ describe('loadConfig', () => {
     expect(config.corsOrigins).toEqual(['https://a.example.com', 'https://b.example.com']);
   });
 
+  it('treats empty values (KEY= in .env) as unset', () => {
+    const config = loadConfig({ SEARCH_BACKEND: '', OPENSEARCH_URL: '', JWT_SECRET: '', PORT: '' });
+    expect(config).toMatchObject({ backend: 'memory', port: 4000 });
+  });
+
   it('rejects an explicit OpenSearch backend without a URL', () => {
     expect(() => loadConfig({ SEARCH_BACKEND: 'opensearch' })).toThrow(/OPENSEARCH_URL/);
   });

@@ -79,7 +79,9 @@ export interface Config {
 export class ConfigError extends Error {}
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = envSchema.safeParse(env);
+  // `KEY=` lines in .env files mean "not set".
+  const defined = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== undefined && value !== ''));
+  const parsed = envSchema.safeParse(defined);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((issue) => `  ${issue.path.join('.')}: ${issue.message}`).join('\n');
     throw new ConfigError(`Invalid environment:\n${issues}`);

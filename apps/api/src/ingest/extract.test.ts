@@ -21,7 +21,9 @@ describe('extractArticle', () => {
     expect(article.content).toContain('flamingo');
     expect(article.content).not.toContain('window.tracking');
     expect(article.content).not.toContain('Copyright Example Engineering');
-    expect(article.content).toMatch(/millions of documents.*\n\nBefore terms/s);
+    // Paragraphs are separated by blank lines; newlines from HTML source formatting become spaces.
+    expect(article.content).toMatch(/even across millions of documents, because a query[^\n]*\n\nBefore terms/);
+    expect(article.content.split('\n\n')[0]).not.toContain('\n');
   });
 
   it('counts words and estimates reading time', () => {

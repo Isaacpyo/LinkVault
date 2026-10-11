@@ -8,7 +8,7 @@ export function healthRoutes(app: FastifyInstance, { store, startedAt }: RouteCo
 
   // Always 200 so the platform health check (liveness) does not restart the
   // service when only the search cluster is down; `status` reports degradation.
-  app.get('/health', { config: { rateLimit: false } }, async (): Promise<HealthResponse> => {
+  app.get('/health', { logLevel: 'warn', config: { rateLimit: false } }, async (): Promise<HealthResponse> => {
     const up = await store.ping();
     return {
       status: up ? 'ok' : 'degraded',

@@ -64,17 +64,29 @@ export function cleanText(text: string): string {
     .trim();
 }
 
-/** Text content of an element with block boundaries turned into blank lines. */
+// Sentinels for line and block breaks while source whitespace is collapsed (not matched by \s).
+const LINE_BREAK = '\uE002';
+const BLOCK_BREAK = '\uE003';
+
+/**
+ * Text content of an element as a reader sees it: source whitespace (including
+ * newlines used for formatting the HTML) collapses to single spaces, <br> becomes a
+ * newline and block elements are separated by blank lines.
+ */
 function blockText(root: Element): string {
   const doc = root.ownerDocument;
-  for (const br of [...root.querySelectorAll('br')]) br.replaceWith(doc.createTextNode('\n'));
+  for (const br of [...root.querySelectorAll('br')]) br.replaceWith(doc.createTextNode(LINE_BREAK));
   for (const el of [...root.querySelectorAll('*')]) {
     if (BLOCK_TAGS.has(el.tagName)) {
-      el.before(doc.createTextNode('\n\n'));
-      el.after(doc.createTextNode('\n\n'));
+      el.before(doc.createTextNode(BLOCK_BREAK));
+      el.after(doc.createTextNode(BLOCK_BREAK));
     }
   }
-  return cleanText(root.textContent ?? '');
+  const text = (root.textContent ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/ ?\uE002 ?/g, '\n')
+    .replace(/(?: ?\uE003 ?)+/g, '\n\n');
+  return cleanText(text);
 }
 
 const escapeHtml = (text: string) =>
