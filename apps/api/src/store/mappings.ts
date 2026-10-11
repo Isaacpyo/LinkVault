@@ -6,9 +6,31 @@ const bool = { type: 'boolean' } as const;
 const integer = { type: 'integer' } as const;
 const storedOnly = { type: 'text', index: false } as const;
 
+/**
+ * Every field searched by free text must drop English stopwords: with AND semantics across
+ * fields, a stopword kept by any one field ("the" in a keyword or simple-analyzed field)
+ * becomes a required term and the query matches nothing.
+ */
 export const settings = (replicas: number) => ({
   number_of_shards: 1,
   number_of_replicas: replicas,
+  analysis: {
+    tokenizer: {
+      alphanumeric: { type: 'pattern', pattern: '[^\\p{L}\\p{N}]+' },
+    },
+    filter: {
+      english_stop: { type: 'stop', stopwords: '_english_' },
+      english_stemmer: { type: 'stemmer', language: 'english' },
+    },
+    analyzer: {
+      // URLs and domains: split on punctuation, then treat like English text.
+      url_text: {
+        type: 'custom',
+        tokenizer: 'alphanumeric',
+        filter: ['lowercase', 'asciifolding', 'english_stop', 'english_stemmer'],
+      },
+    },
+  },
 });
 
 export const usersMapping = {
@@ -41,18 +63,18 @@ export const bookmarksMapping = {
   properties: {
     id: keyword,
     userId: keyword,
-    url: { type: 'text', analyzer: 'simple', fields: { raw: { type: 'keyword', ignore_above: 2048 } } },
+    url: { type: 'text', analyzer: 'url_text', fields: { raw: { type: 'keyword', ignore_above: 2048 } } },
     normalizedUrl: { type: 'keyword', ignore_above: 2048 },
-    domain: { type: 'keyword', fields: { text: { type: 'text', analyzer: 'simple' } } },
+    domain: { type: 'keyword', fields: { text: { type: 'text', analyzer: 'url_text' } } },
     title: { type: 'text', analyzer: 'english', fields: { raw: { type: 'keyword', ignore_above: 512 } } },
     customTitle: bool,
     excerpt: { type: 'text', analyzer: 'english' },
     content: { type: 'text', analyzer: 'english' },
     contentHtml: storedOnly,
-    siteName: { type: 'text', analyzer: 'standard' },
+    siteName: { type: 'text', analyzer: 'english' },
     byline: storedOnly,
     lang: keyword,
-    tags: keyword,
+    tags: { type: 'keyword', fields: { text: { type: 'text', analyzer: 'english' } } },
     collectionId: keyword,
     readLater: bool,
     status: keyword,

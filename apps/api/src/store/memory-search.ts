@@ -16,6 +16,43 @@ export interface Token {
 
 const WORD = /[\p{L}\p{N}]+/gu;
 
+/** Lucene's `_english_` stopword list, as used by the OpenSearch mappings. */
+export const STOPWORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'but',
+  'by',
+  'for',
+  'if',
+  'in',
+  'into',
+  'is',
+  'it',
+  'no',
+  'not',
+  'of',
+  'on',
+  'or',
+  'such',
+  'that',
+  'the',
+  'their',
+  'then',
+  'there',
+  'these',
+  'they',
+  'this',
+  'to',
+  'was',
+  'will',
+  'with',
+]);
+
 /** Very light English stemmer: enough to match "bookmarks" with "bookmark" and "indexing" with "index". */
 export function stem(word: string): string {
   let w = word;
@@ -37,8 +74,10 @@ export function normalizeWord(word: string): string {
 export function tokenize(text: string): Token[] {
   const tokens: Token[] = [];
   for (const match of text.matchAll(WORD)) {
+    const word = normalizeWord(match[0]);
+    if (STOPWORDS.has(word)) continue;
     const start = match.index;
-    tokens.push({ term: stem(normalizeWord(match[0])), start, end: start + match[0].length });
+    tokens.push({ term: stem(word), start, end: start + match[0].length });
   }
   return tokens;
 }

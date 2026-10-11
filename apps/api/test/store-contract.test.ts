@@ -124,6 +124,24 @@ describe.each(backends)('$name store', (backend) => {
       expect(result.hits.map((h) => h.bookmark.title)).toContain('Highlighting search results');
     });
 
+    it('ignores English stopwords in queries across every field', async () => {
+      for (const text of ['the ranking function', 'okapi bm25 is a', 'BM25 of the']) {
+        const result = await store.searchBookmarks(alice.id, q({ q: text }));
+        expect(
+          result.hits.map((h) => h.bookmark.title),
+          text,
+        ).toContain('Okapi BM25');
+      }
+    });
+
+    it('matches tags, sites and URL words through full-text search', async () => {
+      expect(
+        (await store.searchBookmarks(alice.id, q({ q: 'information-retrieval' }))).hits.map((h) => h.bookmark.title),
+      ).toEqual(['Okapi BM25']);
+      expect((await store.searchBookmarks(alice.id, q({ q: 'wikipedia' }))).total).toBe(1);
+      expect((await store.searchBookmarks(alice.id, q({ q: 'owasp' }))).total).toBe(1);
+    });
+
     it('requires all terms and supports exclusion', async () => {
       const both = await store.searchBookmarks(alice.id, q({ q: 'service worker flamingo' }));
       expect(both.total).toBe(0);

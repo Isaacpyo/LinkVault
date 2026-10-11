@@ -68,7 +68,16 @@ export class OpenSearchStore implements Store {
       const { body: exists } = await this.client.indices.exists({ index });
       if (exists) {
         // Additive mapping changes apply in place; breaking ones need a reindex.
-        await this.client.indices.putMapping({ index, body: mappings as never });
+        try {
+          await this.client.indices.putMapping({ index, body: mappings as never });
+        } catch (error) {
+          if (isErrorType(error, 'illegal_argument_exception')) {
+            throw new Error(
+              `Index "${index}" has an incompatible mapping from an older version. Reindex it, or in development delete it (or use a new OPENSEARCH_INDEX_PREFIX).`,
+            );
+          }
+          throw error;
+        }
         continue;
       }
       try {

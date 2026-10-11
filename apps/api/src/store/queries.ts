@@ -2,7 +2,7 @@ import type { SearchQuery } from '@linkvault/shared';
 import { HIGHLIGHT_POST, HIGHLIGHT_PRE } from './highlight.js';
 
 /** Fields searched by free text, with boosts. Kept in one place so both backends agree. */
-export const SEARCH_FIELDS = ['title^3', 'tags^2', 'excerpt^1.5', 'content', 'siteName', 'domain.text', 'url'];
+export const SEARCH_FIELDS = ['title^3', 'tags.text^2', 'excerpt^1.5', 'content', 'siteName', 'domain.text', 'url'];
 
 export const SNIPPET_FRAGMENT_SIZE = 180;
 export const SNIPPET_FRAGMENTS = 2;
