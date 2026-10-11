@@ -6,6 +6,7 @@ import { requireAuth } from './auth/plugin.js';
 import { TokenService } from './auth/tokens.js';
 import type { Config } from './config.js';
 import { AppError } from './errors.js';
+import { createExtractor, type Extractor } from './ingest/extractor.js';
 import { HttpPageFetcher, type PageFetcher } from './ingest/fetcher.js';
 import { IngestService } from './ingest/service.js';
 import { isSearchUnavailableError } from './store/opensearch.js';
@@ -21,6 +22,8 @@ export interface AppOptions {
   store: Store;
   /** Override the HTTP fetcher (tests). */
   fetcher?: PageFetcher;
+  /** Override the extractor (defaults to a worker-thread pool in the compiled build). */
+  extractor?: Extractor;
   logger?: FastifyServerOptions['logger'] | FastifyBaseLogger;
   ingest?: { retryDelayMs?: number };
 }
@@ -44,13 +47,21 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   const app = Fastify({
     ...loggerOption,
-    trustProxy: config.trustProxy,
+    // A hop count trusts only that many proxies nearest the server (proxy-addr semantics).
+    trustProxy:
+      typeof config.trustProxy === 'number'
+        ? (
+            (hops: number) => (_address: string, hop: number) =>
+              hop < hops
+          )(config.trustProxy)
+        : config.trustProxy,
     bodyLimit: 1024 * 1024,
   });
 
   const fetcher = options.fetcher ?? new HttpPageFetcher(config.fetch);
   const ingest = new IngestService(store, fetcher, app.log, {
     concurrency: config.ingestConcurrency,
+    extractor: options.extractor ?? createExtractor(config.ingestConcurrency),
     ...(options.ingest?.retryDelayMs !== undefined && { retryDelayMs: options.ingest.retryDelayMs }),
   });
   app.decorate('ingest', ingest);
@@ -117,7 +128,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
 
   app.addHook('onClose', async () => {
-    await ingest.queue.stop();
+    await ingest.close();
     if (fetcher instanceof HttpPageFetcher) await fetcher.close();
   });
 

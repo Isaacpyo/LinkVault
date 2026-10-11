@@ -36,6 +36,37 @@ describe('IngestQueue', () => {
     expect(seen[1]?.html).toBe('<html>captured</html>');
   });
 
+  it('never runs two jobs for the same bookmark at once', async () => {
+    const events: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const queue = new IngestQueue(async (j) => {
+      events.push(`start:${j.html ?? 'fetch'}`);
+      if (!j.html) await gate;
+      events.push(`end:${j.html ?? 'fetch'}`);
+    }, 2);
+    queue.enqueue(job('a'));
+    await Promise.resolve();
+    expect(queue.has('a')).toBe(true);
+    queue.enqueue(job('a', 'captured'));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(events).toEqual(['start:fetch']); // the second job waits despite a free slot
+    release();
+    await queue.onIdle();
+    expect(events).toEqual(['start:fetch', 'end:fetch', 'start:captured', 'end:captured']);
+  });
+
+  it('counts jobs per user and queued HTML bytes', () => {
+    const queue = new IngestQueue(() => new Promise(() => {}), 1);
+    queue.enqueue({ bookmarkId: 'a', userId: 'u1' });
+    queue.enqueue({ bookmarkId: 'b', userId: 'u1', html: 'x'.repeat(100) });
+    queue.enqueue({ bookmarkId: 'c', userId: 'u2' });
+    expect(queue.countFor('u1')).toBe(2);
+    expect(queue.countFor('u2')).toBe(1);
+    expect(queue.queuedHtmlBytes).toBe(100);
+    expect(queue.size).toBe(3);
+  });
+
   it('reports worker errors and keeps going', async () => {
     const errors: unknown[] = [];
     const done: string[] = [];

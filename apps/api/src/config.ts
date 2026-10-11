@@ -22,7 +22,13 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  TRUST_PROXY: boolish,
+  // false | true | number of proxy hops in front of the app (Render: 1). Only the given number of
+  // right-most X-Forwarded-For entries is trusted, so clients cannot spoof their IP.
+  TRUST_PROXY: z
+    .string()
+    .regex(/^(true|false|\d+)$/, 'true, false or a number of proxy hops')
+    .optional()
+    .transform((value) => (value === undefined || value === 'false' ? false : value === 'true' ? true : Number(value))),
 
   JWT_SECRET: z.string().optional(),
   JWT_TTL: z.string().default('7d'),
@@ -43,7 +49,7 @@ const envSchema = z.object({
 
   ALLOW_PRIVATE_FETCH: boolish,
   FETCH_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
-  FETCH_MAX_BYTES: z.coerce.number().int().min(100_000).max(20_000_000).default(5_000_000),
+  FETCH_MAX_BYTES: z.coerce.number().int().min(100_000).max(20_000_000).default(3_000_000),
   INGEST_CONCURRENCY: z.coerce.number().int().min(1).max(8).default(2),
 
   DEMO_ENABLED: z
@@ -63,7 +69,7 @@ export interface Config {
   port: number;
   host: string;
   logLevel: string;
-  trustProxy: boolean;
+  trustProxy: boolean | number;
   jwtSecret: string;
   jwtTtl: string;
   corsOrigins: string[];
@@ -105,6 +111,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
   if (backend === 'memory') {
     warnings.push('Using the in-memory store: data is lost when the process restarts. Set OPENSEARCH_URL to persist.');
+  }
+  if (e.TRUST_PROXY === true) {
+    warnings.push('TRUST_PROXY=true trusts every X-Forwarded-For entry; prefer the number of proxy hops (e.g. 1).');
   }
   if (e.ALLOW_PRIVATE_FETCH) {
     warnings.push(

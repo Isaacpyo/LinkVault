@@ -26,6 +26,13 @@ describe('loadConfig', () => {
     expect(config.corsOrigins).toEqual(['https://a.example.com', 'https://b.example.com']);
   });
 
+  it('parses TRUST_PROXY as a boolean or a hop count', () => {
+    expect(loadConfig({}).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: '1' }).trustProxy).toBe(1);
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+    expect(() => loadConfig({ TRUST_PROXY: 'yes' })).toThrow(ConfigError);
+  });
+
   it('treats empty values (KEY= in .env) as unset', () => {
     const config = loadConfig({ SEARCH_BACKEND: '', OPENSEARCH_URL: '', JWT_SECRET: '', PORT: '' });
     expect(config).toMatchObject({ backend: 'memory', port: 4000 });

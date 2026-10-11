@@ -22,6 +22,8 @@ describe('isPublicAddress', () => {
     'fc00::1',
     '::ffff:127.0.0.1', // IPv4-mapped loopback
     '::ffff:169.254.169.254',
+    '::127.0.0.1', // IPv4-compatible (deprecated) form
+    '::7f00:1',
     'not-an-ip',
   ])('blocks %s', (ip) => {
     expect(isPublicAddress(ip)).toBe(false);

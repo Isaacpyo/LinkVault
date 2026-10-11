@@ -312,6 +312,61 @@ describe('bookmarks', () => {
     expect(search.json<SearchResponse>().total).toBe(0);
   });
 
+  it('applies back-pressure when a user floods the ingest queue', async () => {
+    const { headers } = await register(t.app);
+    // Pages that never finish keep jobs in the queue.
+    t.fetcher.fetch = () => new Promise(() => {});
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const res = await t.app.inject({
+        method: 'POST',
+        url: '/bookmarks',
+        headers,
+        payload: { url: `https://example.com/p${i}` },
+      });
+      statuses.push(res.statusCode);
+    }
+    expect(statuses.filter((s) => s === 201)).toHaveLength(10);
+    expect(statuses.slice(10)).toEqual([429, 429]);
+    // A second user is unaffected.
+    const other = await register(t.app);
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/bookmarks',
+      headers: other.headers,
+      payload: { url: 'https://example.com/x' },
+    });
+    expect(res.statusCode).toBe(201);
+    await t.app.ingest.queue.stop(0);
+  });
+
+  it('re-queues a bookmark whose pending job was lost', async () => {
+    const { headers, user } = await register(t.app);
+    t.fetcher.set('https://example.com/lost', { html: articleHtml('Found again', longParagraphs('recovery')) });
+    const first = await t.app.inject({
+      method: 'POST',
+      url: '/bookmarks',
+      headers,
+      payload: { url: 'https://example.com/lost' },
+    });
+    const { id } = first.json<SaveBookmarkResponse>().bookmark;
+    await settle();
+    // Simulate a crash mid-extraction: the document is pending but no job exists.
+    await t.store.patchBookmark(user.id, id, { status: 'pending' });
+    const again = await t.app.inject({
+      method: 'POST',
+      url: '/bookmarks',
+      headers,
+      payload: { url: 'https://example.com/lost' },
+    });
+    expect(again.json<SaveBookmarkResponse>().created).toBe(false);
+    await settle();
+    const bookmark = (
+      await t.app.inject({ method: 'GET', url: `/bookmarks/${id}`, headers })
+    ).json<SaveBookmarkResponse>().bookmark;
+    expect(bookmark.status).toBe('ready');
+  });
+
   it('validates input at the boundary', async () => {
     const { headers } = await register(t.app);
     const bad = await t.app.inject({
@@ -421,6 +476,34 @@ describe('search and collections over the demo library', () => {
       await t.app.inject({ method: 'GET', url: `/bookmarks?collectionId=${collection.id}`, headers })
     ).json<SearchResponse>();
     expect(inPicks.items.map((i) => i.bookmark.id)).toEqual([first!.bookmark.id]);
+  });
+});
+
+describe('rate limiting behind a proxy', () => {
+  it('cannot be bypassed by spoofing X-Forwarded-For when TRUST_PROXY is a hop count', async () => {
+    const proxied = await createTestApp({ env: { TRUST_PROXY: '1' } });
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      const res = await proxied.app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        // The client controls the left part; the proxy appends the real address on the right.
+        headers: { 'x-forwarded-for': `10.0.0.${i}, 203.0.113.7` },
+        payload: { email: 'nobody@example.com', password: 'wrong-password' },
+      });
+      statuses.push(res.statusCode);
+    }
+    // A different real client (right-most entry) has its own budget.
+    const other = await proxied.app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      headers: { 'x-forwarded-for': '203.0.113.8' },
+      payload: { email: 'nobody@example.com', password: 'wrong-password' },
+    });
+    await proxied.app.close();
+    expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true);
+    expect(statuses.slice(10)).toEqual([429, 429]);
+    expect(other.statusCode).toBe(401);
   });
 });
 

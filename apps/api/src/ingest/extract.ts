@@ -5,6 +5,12 @@ import { sanitizeArticleHtml } from './sanitize.js';
 
 export const MAX_CONTENT_CHARS = 50_000;
 export const MAX_HTML_CHARS = 100_000;
+/**
+ * Only this much of Readability's article HTML is sanitized and walked: it is
+ * plenty to produce MAX_CONTENT_CHARS of text, and keeps huge pages from costing
+ * seconds of CPU on markup that would be truncated anyway.
+ */
+const MAX_ARTICLE_HTML_CHARS = 400_000;
 const MAX_TITLE_CHARS = 300;
 const MAX_EXCERPT_CHARS = 300;
 const WORDS_PER_MINUTE = 230;
@@ -161,7 +167,8 @@ export function extractArticle({ body, url, contentType }: ExtractInput): Extrac
     let content = '';
     let contentHtml: string | null = null;
     if (article?.content) {
-      const safeHtml = sanitizeArticleHtml(article.content);
+      // Cutting mid-tag is fine: the sanitizer re-parses and closes open elements.
+      const safeHtml = sanitizeArticleHtml(article.content.slice(0, MAX_ARTICLE_HTML_CHARS));
       const container = doc.createElement('div');
       container.innerHTML = safeHtml;
       content = blockText(container);

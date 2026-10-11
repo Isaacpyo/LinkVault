@@ -14,7 +14,7 @@ import {
   updateBookmarkSchema,
 } from '@linkvault/shared/schemas';
 import { claims } from '../auth/plugin.js';
-import { badRequest, notFound } from '../errors.js';
+import { AppError, badRequest, notFound } from '../errors.js';
 import { toBookmark, toReaderContent, toSearchHit } from '../lib/dto.js';
 import { parse } from '../lib/validate.js';
 import { bookmarkIdFor } from '../store/ids.js';
@@ -23,8 +23,28 @@ import type { RouteContext } from './context.js';
 
 const idParam = (params: unknown) => (params as { id: string }).id;
 
+/** Back-pressure for the ingest queue (one free instance, ~512 MB of memory). */
+export const INGEST_LIMITS = {
+  queued: 200,
+  perUser: 10,
+  /** Captured HTML held in memory by waiting jobs; beyond it the server fetches the page instead. */
+  queuedHtmlChars: 30_000_000,
+};
+
 /** Routes registered inside an authenticated scope. */
 export function bookmarkRoutes(app: FastifyInstance, { store, ingest }: RouteContext) {
+  /** Throws 429 when the queue is saturated; returns the captured HTML only if there is room to hold it. */
+  const admit = (userId: string, html: string | undefined) => {
+    if (ingest.queue.size >= INGEST_LIMITS.queued || ingest.queue.countFor(userId) >= INGEST_LIMITS.perUser) {
+      throw new AppError(
+        429,
+        'INGEST_BUSY',
+        "You're saving pages faster than they can be processed. Try again in a minute.",
+      );
+    }
+    return html && ingest.queue.queuedHtmlBytes + html.length <= INGEST_LIMITS.queuedHtmlChars ? html : undefined;
+  };
+
   const assertCollection = async (userId: string, collectionId: string | null | undefined) => {
     if (!collectionId) return;
     if (!(await store.getCollection(userId, collectionId))) throw badRequest('Collection not found');
@@ -62,8 +82,11 @@ export function bookmarkRoutes(app: FastifyInstance, { store, ingest }: RouteCon
       const existing = await store.getBookmark(sub, id);
 
       if (existing) {
-        // Idempotent save: merge into the existing bookmark instead of duplicating.
-        const refetch = Boolean(input.html) || existing.status === 'failed';
+        // Idempotent save: merge into the existing bookmark instead of duplicating. Re-extract when the
+        // user sent fresh HTML, the last attempt failed, or a pending job was lost (e.g. a restart).
+        const lostPending = existing.status === 'pending' && !ingest.queue.has(id);
+        const refetch = Boolean(input.html) || existing.status === 'failed' || lostPending;
+        const html = refetch ? admit(sub, input.html) : undefined;
         const patch: BookmarkPatch = {
           tags: mergeTags(existing.tags, input.tags ?? []),
           updatedAt: now,
@@ -73,11 +96,12 @@ export function bookmarkRoutes(app: FastifyInstance, { store, ingest }: RouteCon
         };
         const updated = await store.patchBookmark(sub, id, patch);
         if (!updated) throw notFound('Bookmark');
-        if (refetch) ingest.enqueue({ bookmarkId: id, userId: sub, ...(input.html && { html: input.html }) });
+        if (refetch) ingest.enqueue({ bookmarkId: id, userId: sub, ...(html && { html }) });
         reply.code(200);
         return { bookmark: toBookmark(updated), created: false };
       }
 
+      const html = admit(sub, input.html);
       const domain = domainOf(normalizedUrl);
       const record: BookmarkRecord = {
         id,
@@ -106,7 +130,7 @@ export function bookmarkRoutes(app: FastifyInstance, { store, ingest }: RouteCon
         fetchedAt: null,
       };
       await store.putBookmark(record);
-      ingest.enqueue({ bookmarkId: id, userId: sub, ...(input.html && { html: input.html }) });
+      ingest.enqueue({ bookmarkId: id, userId: sub, ...(html && { html }) });
       reply.code(201);
       return { bookmark: toBookmark(record), created: true };
     },
@@ -151,6 +175,7 @@ export function bookmarkRoutes(app: FastifyInstance, { store, ingest }: RouteCon
   app.post('/bookmarks/:id/refetch', async (request, reply) => {
     const { sub } = claims(request);
     const id = idParam(request.params);
+    admit(sub, undefined);
     const updated = await store.patchBookmark(sub, id, {
       status: 'pending',
       error: null,

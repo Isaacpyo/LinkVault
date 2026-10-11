@@ -32,6 +32,8 @@ export function isPublicAddress(address: string): boolean {
   if (parsed.kind() === 'ipv6') {
     const v6 = parsed as ipaddr.IPv6;
     if (v6.isIPv4MappedAddress()) parsed = v6.toIPv4Address();
+    // Deprecated IPv4-compatible addresses (::a.b.c.d) embed an IPv4 address; never fetch them.
+    else if (v6.parts.slice(0, 6).every((part) => part === 0)) return false;
   }
   return parsed.range() === 'unicast';
 }

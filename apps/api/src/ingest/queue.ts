@@ -9,13 +9,16 @@ type Worker = (job: IngestJob) => Promise<void>;
 type ErrorLogger = (error: unknown, job: IngestJob) => void;
 
 /**
- * Small in-process work queue with bounded concurrency and per-bookmark
- * de-duplication (re-saving a page while it is queued replaces the queued job).
+ * Small in-process work queue with bounded concurrency.
+ * - Re-saving a page while it is queued replaces the queued job.
+ * - Two jobs for the same bookmark never run at once: a job enqueued while one is
+ *   running waits for it, so the latest request is applied last.
+ * - Exposes per-user counts and queued HTML bytes so callers can apply back-pressure.
  */
 export class IngestQueue {
   private readonly queued = new Map<string, IngestJob>();
   private readonly order: string[] = [];
-  private active = 0;
+  private readonly running = new Map<string, IngestJob>();
   private stopped = false;
   private idleWaiters: Array<() => void> = [];
 
@@ -27,7 +30,25 @@ export class IngestQueue {
 
   /** Jobs waiting plus jobs running. */
   get size(): number {
-    return this.order.length + this.active;
+    return this.order.length + this.running.size;
+  }
+
+  /** Bytes of captured HTML held by waiting jobs. */
+  get queuedHtmlBytes(): number {
+    let total = 0;
+    for (const job of this.queued.values()) total += job.html?.length ?? 0;
+    return total;
+  }
+
+  has(bookmarkId: string): boolean {
+    return this.queued.has(bookmarkId) || this.running.has(bookmarkId);
+  }
+
+  countFor(userId: string): number {
+    let count = 0;
+    for (const job of this.queued.values()) if (job.userId === userId) count++;
+    for (const job of this.running.values()) if (job.userId === userId) count++;
+    return count;
   }
 
   enqueue(job: IngestJob): void {
@@ -59,16 +80,18 @@ export class IngestQueue {
   }
 
   private pump(): void {
-    while (this.active < this.concurrency && this.order.length) {
-      const id = this.order.shift()!;
+    while (this.running.size < this.concurrency) {
+      const index = this.order.findIndex((id) => !this.running.has(id));
+      if (index === -1) break;
+      const [id] = this.order.splice(index, 1) as [string];
       const job = this.queued.get(id);
       this.queued.delete(id);
       if (!job) continue;
-      this.active++;
+      this.running.set(id, job);
       this.worker(job)
         .catch((error: unknown) => this.onError(error, job))
         .finally(() => {
-          this.active--;
+          this.running.delete(id);
           this.pump();
           if (this.size === 0) {
             const waiters = this.idleWaiters;

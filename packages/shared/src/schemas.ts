@@ -4,8 +4,8 @@ import { BOOKMARK_STATUSES, COLLECTION_COLORS, SEARCH_SORTS } from './types.js';
 import { isSaveableUrl } from './url.js';
 
 export const MAX_URL_LENGTH = 2048;
-/** Upper bound for page HTML captured by the extension. */
-export const MAX_CAPTURED_HTML = 3_000_000;
+/** Upper bound for page HTML captured by the extension (characters; the extension checks UTF-8 bytes). */
+export const MAX_CAPTURED_HTML = 1_500_000;
 
 const email = z
   .string()
