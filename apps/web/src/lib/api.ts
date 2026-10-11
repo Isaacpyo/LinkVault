@@ -16,7 +16,12 @@ import type {
 } from '@linkvault/shared';
 import { WAKE_THRESHOLD_MS, wakeTracker, type WakeTracker } from './wake';
 
-export const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
+/** Production fallback if VITE_API_URL was not set at build time (the Render service URL). */
+const PRODUCTION_API_URL = 'https://linkvault-api.onrender.com';
+
+export const API_URL = (
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:4000' : PRODUCTION_API_URL)
+).replace(/\/+$/, '');
 
 /** How long idempotent requests keep retrying while the server boots. */
 const WAKE_DEADLINE_MS = 90_000;

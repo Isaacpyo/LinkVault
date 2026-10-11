@@ -1,13 +1,13 @@
 # Netlify config for the existing "linkvault" site (https://linkvault.temitopeagbola.com).
-# The repo is an npm workspaces monorepo; Netlify installs from the repository root
-# and builds the web app in apps/web.
 
 [build]
-  base = "apps/web"
-  command = "npm run build"
-  publish = "dist"
+  # The npm workspaces lockfile lives at the repository root, so Netlify installs from
+  # there and builds only the web app workspace (apps/web).
+  base = "/"
+  command = "npm run build -w @linkvault/web"
+  publish = "apps/web/dist"
   # Skip deploys when nothing the web app depends on changed (exit 0 = skip).
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ../../packages/shared ../../package-lock.json ../../netlify.toml"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- apps/web packages/shared package-lock.json netlify.toml"
 
 [build.environment]
   NODE_VERSION = "22"
