@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { loginSchema, registerSchema, type AuthResponse } from '@linkvault/shared';
+import { type AuthResponse } from '@linkvault/shared';
+import { loginSchema, registerSchema } from '@linkvault/shared/schemas';
 import { DUMMY_HASH, hashPassword, verifyPassword } from '../auth/passwords.js';
 import { claims, requireAuth } from '../auth/plugin.js';
 import { createDemoSandbox } from '../demo/demo.js';

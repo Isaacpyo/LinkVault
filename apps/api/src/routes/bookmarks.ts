@@ -1,16 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import {
-  createBookmarkSchema,
   domainOf,
-  lookupQuerySchema,
   mergeTags,
   normalizeUrl,
-  searchQuerySchema,
-  updateBookmarkSchema,
   type LibrarySummary,
   type SaveBookmarkResponse,
   type SearchResponse,
 } from '@linkvault/shared';
+import {
+  createBookmarkSchema,
+  lookupQuerySchema,
+  searchQuerySchema,
+  updateBookmarkSchema,
+} from '@linkvault/shared/schemas';
 import { claims } from '../auth/plugin.js';
 import { badRequest, notFound } from '../errors.js';
 import { toBookmark, toReaderContent, toSearchHit } from '../lib/dto.js';

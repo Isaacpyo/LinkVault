@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeUrl, searchQuerySchema, type SearchQueryInput } from '@linkvault/shared';
+import { normalizeUrl, type SearchQueryInput } from '@linkvault/shared';
+import { searchQuerySchema } from '@linkvault/shared/schemas';
 import { seedLibrary } from '../src/demo/demo.js';
 import { DuplicateError } from '../src/errors.js';
 import { HIGHLIGHT_PRE } from '../src/store/highlight.js';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { searchQuerySchema } from '@linkvault/shared';
+import { searchQuerySchema } from '@linkvault/shared/schemas';
 import { buildSearchBody, buildSummaryBody } from './queries.js';
 
 const query = (input: Record<string, unknown> = {}) => searchQuerySchema.parse(input);

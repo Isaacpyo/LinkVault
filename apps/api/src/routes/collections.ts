@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { createCollectionSchema, updateCollectionSchema, type Collection } from '@linkvault/shared';
+import { type Collection } from '@linkvault/shared';
+import { createCollectionSchema, updateCollectionSchema } from '@linkvault/shared/schemas';
 import { claims } from '../auth/plugin.js';
 import { conflict, notFound } from '../errors.js';
 import { toCollection } from '../lib/dto.js';
