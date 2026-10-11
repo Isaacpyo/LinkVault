@@ -11,20 +11,23 @@ export function isExtensionInstalled(): boolean {
   return document.documentElement.hasAttribute(EXTENSION_ATTRIBUTE);
 }
 
-/** Hands the current session to the extension. Resolves true once the extension confirms. */
+export type ConnectResult = { ok: true } | { ok: false; reason: 'no-response' | 'api-mismatch' | 'rejected' };
+
+/** Hands the current session to the extension and reports what it answered. */
 export function connectExtension(session: { token: string; apiUrl: string; email: string }, timeoutMs = 3_000) {
-  return new Promise<boolean>((resolve) => {
+  return new Promise<ConnectResult>((resolve) => {
     const timer = setTimeout(() => {
       window.removeEventListener('message', onMessage);
-      resolve(false);
+      resolve({ ok: false, reason: 'no-response' });
     }, timeoutMs);
     function onMessage(event: MessageEvent) {
       if (event.source !== window || event.origin !== window.location.origin) return;
-      const data = event.data as { source?: string; type?: string; ok?: boolean } | null;
+      const data = event.data as { source?: string; type?: string; ok?: boolean; reason?: string } | null;
       if (data?.source !== REPLY_SOURCE || data.type !== 'CONNECT_RESULT') return;
       clearTimeout(timer);
       window.removeEventListener('message', onMessage);
-      resolve(data.ok === true);
+      if (data.ok === true) resolve({ ok: true });
+      else resolve({ ok: false, reason: data.reason === 'api-mismatch' ? 'api-mismatch' : 'rejected' });
     }
     window.addEventListener('message', onMessage);
     window.postMessage({ source: MESSAGE_SOURCE, type: 'CONNECT', ...session }, window.location.origin);

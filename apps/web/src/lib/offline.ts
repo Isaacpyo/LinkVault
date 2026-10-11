@@ -1,4 +1,4 @@
-import type { ReaderContent } from '@linkvault/shared';
+import type { Bookmark, ReaderContent } from '@linkvault/shared';
 import type { ApiClient } from './api';
 
 /**
@@ -56,15 +56,24 @@ export async function clearOffline(): Promise<void> {
   if (supported()) await caches.delete(READ_LATER_CACHE);
 }
 
+/** Upper bound on read-later items synced (50 per page). */
+const MAX_SYNC_PAGES = 20;
+
 /**
- * Makes the offline cache match the server's read-later list: downloads
- * missing articles and drops ones no longer marked read later.
+ * Makes the offline cache match the server's read-later list: downloads missing
+ * articles and drops copies whose bookmark is no longer marked read later (or was
+ * deleted). Bookmarks that are temporarily pending or failed keep their copy.
  */
 export async function syncReadLater(api: ApiClient): Promise<{ saved: number; removed: number }> {
   if (!supported()) return { saved: 0, removed: 0 };
-  const params = new URLSearchParams({ readLater: 'true', pageSize: '50', status: 'ready' });
-  const { items } = await api.search(params);
-  const wanted = new Map(items.map((item) => [item.bookmark.id, item.bookmark]));
+  const wanted = new Map<string, Bookmark>();
+  for (let page = 1; page <= MAX_SYNC_PAGES; page++) {
+    const params = new URLSearchParams({ readLater: 'true', pageSize: '50', page: String(page), sort: 'newest' });
+    const result = await api.search(params);
+    for (const item of result.items) wanted.set(item.bookmark.id, item.bookmark);
+    if (page * result.pageSize >= result.total) break;
+  }
+
   const cached = await listOffline();
   let removed = 0;
   for (const article of cached) {
@@ -75,10 +84,10 @@ export async function syncReadLater(api: ApiClient): Promise<{ saved: number; re
   }
   const cachedIds = new Set(cached.map((a) => a.id));
   let saved = 0;
-  for (const id of wanted.keys()) {
-    if (cachedIds.has(id)) continue;
+  for (const bookmark of wanted.values()) {
+    if (cachedIds.has(bookmark.id) || bookmark.status !== 'ready') continue;
     try {
-      await saveOffline(api, id);
+      await saveOffline(api, bookmark.id);
       saved++;
     } catch {
       // One failed download should not stop the rest; it is retried on the next sync.

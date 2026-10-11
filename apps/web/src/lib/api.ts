@@ -87,6 +87,17 @@ export class ApiClient {
     this.sleep = options.sleep ?? defaultSleep;
   }
 
+  /** Same client configuration, authenticated with a different token (session hand-off). */
+  withToken(token: string): ApiClient {
+    return new ApiClient({
+      baseUrl: this.baseUrl,
+      getToken: () => token,
+      fetchImpl: this.fetchImpl,
+      tracker: this.tracker,
+      sleep: this.sleep,
+    });
+  }
+
   /** URL of the reader-content endpoint; also the Cache Storage key for offline copies. */
   contentUrl(id: string) {
     return `${this.baseUrl}/bookmarks/${encodeURIComponent(id)}/content`;

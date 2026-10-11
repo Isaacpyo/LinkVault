@@ -51,14 +51,15 @@ export function SettingsPage() {
   const connect = async () => {
     if (!token || !user) return;
     setConnecting(true);
-    const ok = await connectExtension({ token, apiUrl: API_URL, email: user.email });
+    const result = await connectExtension({ token, apiUrl: API_URL, email: user.email });
     setConnecting(false);
-    toast(
-      ok
-        ? 'Extension connected — save any tab with one click'
-        : 'The extension did not respond. Reload this page and try again.',
-      ok ? 'success' : 'error',
-    );
+    if (result.ok) toast('Extension connected — save any tab with one click');
+    else if (result.reason === 'api-mismatch')
+      toast(
+        `The extension is set up for a different server. Set its API URL to ${API_URL} in the extension options.`,
+        'error',
+      );
+    else toast('The extension did not respond. Reload this page and try again.', 'error');
   };
 
   return (
