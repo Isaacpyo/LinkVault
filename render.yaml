@@ -1,0 +1,36 @@
+# Render Blueprint for the LinkVault API (free web service, Docker runtime).
+# Render dashboard → New → Blueprint → select this repository.
+services:
+  - type: web
+    name: linkvault-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/shared/**
+        - package-lock.json
+        - render.yaml
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render terminates TLS in front of the service; trust X-Forwarded-For for rate limiting.
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: JWT_SECRET
+        generateValue: true
+      # Bonsai (or any OpenSearch) URL including credentials, e.g. https://user:pass@xxxx.bonsaisearch.net
+      - key: OPENSEARCH_URL
+        sync: false
+      - key: OPENSEARCH_INDEX_PREFIX
+        value: linkvault
+      - key: CORS_ORIGINS
+        value: https://linkvault.temitopeagbola.com
+      - key: LOG_LEVEL
+        value: info

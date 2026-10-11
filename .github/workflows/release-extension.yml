@@ -1,0 +1,57 @@
+name: Release extension
+
+# Builds the Chrome extension and attaches the zip to a GitHub Release named
+# after its version (extension-v<version>). Runs when the extension changes on
+# main, or manually. Re-running for the same version replaces the zip.
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/extension/**
+      - packages/shared/**
+      - .github/workflows/release-extension.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-extension
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Test extension
+        run: npm test -w @linkvault/extension
+      - name: Build and zip
+        run: npm run zip -w @linkvault/extension
+        env:
+          # Production defaults; override with repository variables if the URLs differ.
+          VITE_API_URL: ${{ vars.EXTENSION_API_URL || 'https://linkvault-api.onrender.com' }}
+          VITE_WEB_URL: ${{ vars.EXTENSION_WEB_URL || 'https://linkvault.temitopeagbola.com' }}
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./apps/extension/package.json').version")
+          TAG="extension-v${VERSION}"
+          ZIP="apps/extension/linkvault-extension-v${VERSION}.zip"
+          NOTES="LinkVault Chrome extension ${VERSION}.
+
+          Install: download linkvault-extension-v${VERSION}.zip, unzip it, open chrome://extensions, enable Developer mode, click \"Load unpacked\" and select the unzipped folder.
+
+          Built from ${GITHUB_SHA}."
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+          else
+            gh release create "$TAG" "$ZIP" --title "LinkVault extension v${VERSION}" --notes "$NOTES" --target "$GITHUB_SHA" --latest
+          fi
