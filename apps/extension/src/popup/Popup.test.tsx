@@ -89,6 +89,18 @@ describe('Popup', () => {
     expect(await screen.findByText('Already in your library.')).toBeInTheDocument();
   });
 
+  it('signs out and asks to sign in again when the session has expired', async () => {
+    const { store } = installChromeMock();
+    store.session = { token: 'expired-token-123', email: 'ada@example.com' };
+    stubFetch(() =>
+      json({ error: { code: 'UNAUTHORIZED', message: 'Your session has expired. Sign in again.' } }, 401),
+    );
+    render(<Popup />);
+    expect(await screen.findByText(/session has expired/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(store.session).toBeUndefined();
+  });
+
   it('explains that browser pages cannot be saved', async () => {
     const { store } = installChromeMock({ tab: { url: 'chrome://extensions', title: 'Extensions' } });
     store.session = { token: 'token-123456789', email: 'ada@example.com' };

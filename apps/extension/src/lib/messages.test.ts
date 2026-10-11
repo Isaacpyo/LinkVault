@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allowedWebOrigins, isConnectMessage, isTrustedSender } from './messages';
+import { acceptsApiUrl, allowedWebOrigins, isConnectMessage, isTrustedSender } from './messages';
 
 const manifest = {
   manifest_version: 3,
@@ -32,5 +32,14 @@ describe('connect messages', () => {
     expect(isTrustedSender({ id: 'ext', url: 'http://localhost:5173/settings' }, 'ext', origins)).toBe(true);
     expect(isTrustedSender({ id: 'ext', origin: 'https://evil.example.com' }, 'ext', origins)).toBe(false);
     expect(isTrustedSender({ id: 'other', origin: 'https://linkvault.example.com' }, 'ext', origins)).toBe(false);
+  });
+});
+
+describe('acceptsApiUrl', () => {
+  const allowed = { defaultApiUrl: 'https://api.example.com', currentApiUrl: 'http://localhost:4000' };
+  it('accepts only the build default or the configured API', () => {
+    expect(acceptsApiUrl('https://api.example.com/', allowed)).toBe(true);
+    expect(acceptsApiUrl('http://localhost:4000', allowed)).toBe(true);
+    expect(acceptsApiUrl('https://attacker.example.com', allowed)).toBe(false);
   });
 });

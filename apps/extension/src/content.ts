@@ -20,12 +20,13 @@ window.addEventListener('message', (event: MessageEvent) => {
   if (data?.source !== 'linkvault-web' || data.type !== 'CONNECT') return;
   chrome.runtime.sendMessage(
     { type: 'CONNECT', token: data.token, email: data.email, apiUrl: data.apiUrl },
-    (response?: { ok?: boolean }) => {
+    (response?: { ok?: boolean; reason?: string }) => {
       window.postMessage(
         {
           source: 'linkvault-extension',
           type: 'CONNECT_RESULT',
           ok: response?.ok === true && !chrome.runtime.lastError,
+          reason: response?.reason,
         },
         window.location.origin,
       );

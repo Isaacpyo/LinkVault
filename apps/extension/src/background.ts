@@ -1,7 +1,7 @@
 import { isSaveableUrl } from '@linkvault/shared';
-import { createApi } from './lib/api';
-import { allowedWebOrigins, isConnectMessage, isTrustedSender } from './lib/messages';
-import { getSession, getSettings, saveSettings, setSession } from './lib/storage';
+import { ApiError, createApi } from './lib/api';
+import { acceptsApiUrl, allowedWebOrigins, isConnectMessage, isTrustedSender } from './lib/messages';
+import { DEFAULT_SETTINGS, getSession, getSettings, saveSettings, setSession } from './lib/storage';
 import { capturePageHtml } from './lib/tabs';
 
 /**
@@ -47,6 +47,11 @@ async function quickSave(url: string | undefined, title: string | undefined, tab
     const { created } = await api.save({ url, ...(title && { title }), ...(html && { html }) });
     await flashBadge('✓', '#16a34a', created ? 'Saved to LinkVault' : 'Already in LinkVault');
   } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      await setSession(null);
+      await flashBadge('?', '#d97706', 'Session expired: click the LinkVault icon to sign in');
+      return;
+    }
     await flashBadge('!', '#dc2626', error instanceof Error ? error.message : 'Could not save');
   }
 }
@@ -60,18 +65,28 @@ chrome.commands.onCommand.addListener((command, tab) => {
   if (command === 'save-page') void quickSave(tab?.url, tab?.title, tab?.id);
 });
 
-chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse: (response: { ok: boolean }) => void) => {
-  if (!isConnectMessage(message)) return false;
-  const origins = allowedWebOrigins(chrome.runtime.getManifest());
-  if (!isTrustedSender(sender, chrome.runtime.id, origins)) {
-    sendResponse({ ok: false });
-    return false;
-  }
-  const webUrl = sender.origin ?? new URL(sender.url ?? '').origin;
-  void (async () => {
-    await setSession({ token: message.token, email: message.email });
-    await saveSettings({ apiUrl: message.apiUrl, webUrl });
-    sendResponse({ ok: true });
-  })();
-  return true; // async response
-});
+chrome.runtime.onMessage.addListener(
+  (message: unknown, sender, sendResponse: (response: { ok: boolean; reason?: string }) => void) => {
+    if (!isConnectMessage(message)) return false;
+    const origins = allowedWebOrigins(chrome.runtime.getManifest());
+    if (!isTrustedSender(sender, chrome.runtime.id, origins)) {
+      sendResponse({ ok: false });
+      return false;
+    }
+    const webUrl = sender.origin ?? new URL(sender.url ?? '').origin;
+    void (async () => {
+      // Only accept the API this build ships with or the one already configured: a script on the
+      // web origin must not be able to redirect future saves (and captured pages) to another server.
+      const settings = await getSettings();
+      const apiUrl = message.apiUrl.replace(/\/+$/, '');
+      if (!acceptsApiUrl(apiUrl, { defaultApiUrl: DEFAULT_SETTINGS.apiUrl, currentApiUrl: settings.apiUrl })) {
+        sendResponse({ ok: false, reason: 'api-mismatch' });
+        return;
+      }
+      await setSession({ token: message.token, email: message.email });
+      await saveSettings({ apiUrl, webUrl });
+      sendResponse({ ok: true });
+    })();
+    return true; // async response
+  },
+);

@@ -8,8 +8,14 @@ export interface CurrentTab {
   saveable: boolean;
 }
 
-/** Upper bound for captured HTML; larger pages are fetched by the server instead. */
-export const MAX_CAPTURE_CHARS = 2_900_000;
+/**
+ * Upper bound for captured HTML in UTF-8 bytes: the API limits the request body in
+ * bytes, and non-Latin text takes up to 3 bytes per character. Larger pages are
+ * fetched by the server instead.
+ */
+export const MAX_CAPTURE_BYTES = 1_400_000;
+
+export const fitsCaptureLimit = (html: string) => new TextEncoder().encode(html).length <= MAX_CAPTURE_BYTES;
 
 export async function getCurrentTab(): Promise<CurrentTab | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -36,7 +42,7 @@ export async function capturePageHtml(tabId: number | undefined): Promise<string
       func: () => document.documentElement.outerHTML,
     });
     const html = result?.result;
-    return typeof html === 'string' && html.length <= MAX_CAPTURE_CHARS ? html : undefined;
+    return typeof html === 'string' && fitsCaptureLimit(html) ? html : undefined;
   } catch {
     return undefined;
   }

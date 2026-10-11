@@ -20,7 +20,7 @@ import {
   type ReactNode,
 } from 'react';
 import { parseTags, type Bookmark, type Collection } from '@linkvault/shared';
-import { createApi, type Api } from '../lib/api';
+import { ApiError, createApi, type Api } from '../lib/api';
 import { getSession, getSettings, handoffUrl, setSession, type Session, type Settings } from '../lib/storage';
 import { capturePageHtml, getCurrentTab, type CurrentTab } from '../lib/tabs';
 
@@ -188,6 +188,15 @@ export function Popup() {
   const [session, setSessionState] = useState<Session | null>(null);
   const [tab, setTab] = useState<CurrentTab | null>(null);
   const [slow, setSlow] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  /** An expired or revoked token: forget it and ask the user to sign in again. */
+  const expireSession = useCallback(async () => {
+    await setSession(null);
+    setSessionState(null);
+    setNotice('Your session has expired. Sign in again to keep saving.');
+    setView({ kind: 'signed-out' });
+  }, []);
 
   const api = useMemo<Api | null>(
     () =>
@@ -214,12 +223,13 @@ export function Popup() {
         });
         setView({ kind: 'saved', bookmark, created });
       } catch (error) {
-        setView({ kind: 'error', message: error instanceof Error ? error.message : 'Could not save this page' });
+        if (error instanceof ApiError && error.status === 401) await expireSession();
+        else setView({ kind: 'error', message: error instanceof Error ? error.message : 'Could not save this page' });
       } finally {
         setSlow(false);
       }
     },
-    [settings?.capturePage],
+    [expireSession, settings?.capturePage],
   );
 
   // Initial load: settings, session and the active tab.
@@ -246,9 +256,11 @@ export function Popup() {
       void api
         .lookup(tab.url)
         .then(({ bookmark }) => bookmark && setView({ kind: 'saved', bookmark, created: false }))
-        .catch(() => {})
+        .catch((error: unknown) => {
+          if (error instanceof ApiError && error.status === 401) void expireSession();
+        })
         .finally(() => setSlow(false));
-  }, [api, save, session, tab, view.kind]);
+  }, [api, expireSession, save, session, tab, view.kind]);
 
   const signIn = async (action: (client: Api) => Promise<{ token: string; user: { email: string } }>) => {
     if (!settings) return;
@@ -276,7 +288,7 @@ export function Popup() {
             <Loader2 className="size-5 animate-spin text-slate-400" aria-label="Loading" />
           </div>
         )}
-        {view.kind === 'signed-out' && <SignIn onSignIn={signIn} webUrl={settings?.webUrl} />}
+        {view.kind === 'signed-out' && <SignIn onSignIn={signIn} webUrl={settings?.webUrl} notice={notice} />}
         {view.kind === 'unsupported' && (
           <Notice tone="indigo" icon={<AlertCircle className="size-3.5" />}>
             Browser pages like this one can't be saved. Open a website and click the icon again.
@@ -335,9 +347,11 @@ export function Popup() {
 function SignIn({
   onSignIn,
   webUrl,
+  notice,
 }: {
   onSignIn: (action: (client: Api) => Promise<{ token: string; user: { email: string } }>) => Promise<void>;
   webUrl: string | undefined;
+  notice: string | null;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -366,7 +380,13 @@ function SignIn({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600 dark:text-slate-300">Sign in to save pages to your LinkVault.</p>
+      {notice ? (
+        <Notice tone="amber" icon={<AlertCircle className="size-3.5" />}>
+          {notice}
+        </Notice>
+      ) : (
+        <p className="text-sm text-slate-600 dark:text-slate-300">Sign in to save pages to your LinkVault.</p>
+      )}
       <form onSubmit={submit} className="space-y-2" noValidate>
         <label htmlFor="email" className="sr-only">
           Email

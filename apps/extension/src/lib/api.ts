@@ -18,6 +18,15 @@ export class ApiError extends Error {
 }
 
 export const SLOW_REQUEST_MS = 2_500;
+
+export interface SaveInput {
+  url: string;
+  title?: string;
+  tags?: string[];
+  collectionId?: string | null;
+  readLater?: boolean;
+  html?: string;
+}
 const WAKE_DEADLINE_MS = 75_000;
 
 export interface ApiOptions {
@@ -86,16 +95,19 @@ export function createApi({ baseUrl, token, onSlow, fetchImpl = (...args) => fet
     demo: () => request<AuthResponse>('/auth/demo', { method: 'POST', retry: true }),
     lookup: (url: string) => request<{ bookmark: Bookmark | null }>(`/bookmarks/lookup?url=${encodeURIComponent(url)}`),
     get: (id: string) => request<{ bookmark: Bookmark }>(`/bookmarks/${encodeURIComponent(id)}`),
-    save: (input: {
-      url: string;
-      title?: string;
-      tags?: string[];
-      collectionId?: string | null;
-      readLater?: boolean;
-      html?: string;
-    }) =>
+    save: async (input: SaveInput): Promise<SaveBookmarkResponse> => {
       // Saving is idempotent server-side (same URL → same bookmark), so it is safe to retry while the server wakes.
-      request<SaveBookmarkResponse>('/bookmarks', { method: 'POST', body: input, retry: true }),
+      try {
+        return await request<SaveBookmarkResponse>('/bookmarks', { method: 'POST', body: input, retry: true });
+      } catch (error) {
+        // A captured page the API rejects (too large) must not lose the save: let the server fetch it.
+        if (input.html && error instanceof ApiError && (error.status === 413 || error.status === 400)) {
+          const { html: _html, ...withoutHtml } = input;
+          return request<SaveBookmarkResponse>('/bookmarks', { method: 'POST', body: withoutHtml, retry: true });
+        }
+        throw error;
+      }
+    },
     update: (id: string, input: UpdateBookmarkInput) =>
       request<{ bookmark: Bookmark }>(`/bookmarks/${encodeURIComponent(id)}`, { method: 'PATCH', body: input }),
     remove: (id: string) => request<null>(`/bookmarks/${encodeURIComponent(id)}`, { method: 'DELETE' }),

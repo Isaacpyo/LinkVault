@@ -26,6 +26,15 @@ export function allowedWebOrigins(manifest: chrome.runtime.Manifest): string[] {
     .map((pattern) => pattern.replace(/\/\*$/, ''));
 }
 
+/**
+ * The API a connect message may switch the extension to: the build default or the one
+ * already configured. Anything else could redirect future saves to another server.
+ */
+export function acceptsApiUrl(apiUrl: string, allowed: { defaultApiUrl: string; currentApiUrl: string }): boolean {
+  const normalized = apiUrl.replace(/\/+$/, '');
+  return normalized === allowed.defaultApiUrl || normalized === allowed.currentApiUrl;
+}
+
 export function isTrustedSender(sender: chrome.runtime.MessageSender, extensionId: string, origins: string[]): boolean {
   if (sender.id !== extensionId) return false;
   const origin = sender.origin ?? (sender.url ? new URL(sender.url).origin : undefined);
