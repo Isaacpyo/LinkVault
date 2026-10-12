@@ -12,7 +12,7 @@ import { clearOffline, listOffline } from '../lib/offline';
 import { useHealth } from '../lib/queries';
 
 const EXTENSION_DOWNLOAD_URL =
-  import.meta.env.VITE_EXTENSION_DOWNLOAD_URL || 'https://github.com/Isaacpyo/LinkVault/releases/latest';
+  import.meta.env.VITE_EXTENSION_DOWNLOAD_URL || 'https://github.com/temitopeagbola/LinkVault/releases/latest';
 
 function Card({ id, icon, title, children }: { id?: string; icon: ReactNode; title: string; children: ReactNode }) {
   return (
