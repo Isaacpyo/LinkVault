@@ -1,0 +1,139 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-indigo-500);
+    outline-offset: 2px;
+  }
+
+  mark {
+    background-color: var(--color-amber-200);
+    color: inherit;
+    border-radius: 0.2em;
+    padding: 0 0.1em;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    mark {
+      background-color: color-mix(in oklab, var(--color-amber-400) 45%, transparent);
+    }
+  }
+
+  dialog::backdrop {
+    background: rgb(15 23 42 / 0.5);
+    backdrop-filter: blur(2px);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Reader typography (sanitized article HTML). */
+.reader {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.reader > * + * {
+  margin-top: 1.1em;
+}
+.reader h1,
+.reader h2,
+.reader h3,
+.reader h4 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.8em;
+}
+.reader h2 {
+  font-size: 1.4em;
+}
+.reader h3 {
+  font-size: 1.2em;
+}
+.reader a {
+  color: var(--color-indigo-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.reader img,
+.reader video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.reader figcaption {
+  font-family: var(--font-sans);
+  font-size: 0.85em;
+  color: var(--color-slate-500);
+  margin-top: 0.4em;
+}
+.reader blockquote {
+  border-left: 3px solid var(--color-indigo-300);
+  padding-left: 1em;
+  color: var(--color-slate-600);
+  font-style: italic;
+}
+.reader ul,
+.reader ol {
+  padding-left: 1.4em;
+}
+.reader ul {
+  list-style: disc;
+}
+.reader ol {
+  list-style: decimal;
+}
+.reader pre {
+  font-size: 0.85em;
+  background: var(--color-slate-900);
+  color: var(--color-slate-100);
+  border-radius: 0.5rem;
+  padding: 1em;
+  overflow-x: auto;
+}
+.reader code {
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.reader :not(pre) > code {
+  background: var(--color-slate-100);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.3em;
+}
+.reader table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+.reader td,
+.reader th {
+  border: 1px solid var(--color-slate-200);
+  padding: 0.4em 0.6em;
+}
+
+@media (prefers-color-scheme: dark) {
+  .reader a {
+    color: var(--color-indigo-300);
+  }
+  .reader blockquote {
+    color: var(--color-slate-300);
+  }
+  .reader :not(pre) > code {
+    background: var(--color-slate-800);
+  }
+  .reader td,
+  .reader th {
+    border-color: var(--color-slate-700);
+  }
+}

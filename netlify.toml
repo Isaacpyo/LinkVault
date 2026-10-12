@@ -1,7 +1,42 @@
-[build]
-  base = "frontend"
-  command = "npm run build"
-  publish = ".next"
+# Netlify config for the existing "linkvault" site (https://linkvault.temitopeagbola.com).
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+[build]
+  # The npm workspaces lockfile lives at the repository root, so Netlify installs from
+  # there and builds only the web app workspace (apps/web).
+  base = "/"
+  command = "npm run build -w @linkvault/web"
+  publish = "apps/web/dist"
+  # Skip deploys when nothing the web app depends on changed (exit 0 = skip).
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- apps/web packages/shared package-lock.json netlify.toml"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Set VITE_API_URL in the Netlify UI (Site configuration → Environment variables),
+  # e.g. https://linkvault-api.onrender.com
+
+# Single-page app: unknown paths serve index.html (real files are served first).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
+# The service worker must always be revalidated so updates roll out.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# Hashed build assets never change.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
