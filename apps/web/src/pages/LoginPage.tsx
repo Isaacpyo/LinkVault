@@ -92,7 +92,7 @@ export function LoginPage() {
               </Feature>
             </ul>
           </div>
-          <p className="text-sm text-indigo-200">Open source · React · Node.js · OpenSearch</p>
+          <p className="text-sm text-indigo-200">React · Node.js · OpenSearch</p>
         </section>
 
         <main id="main" className="flex items-center justify-center px-4 py-10 sm:px-8">

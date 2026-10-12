@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Bookmark manager with full-text search: Chrome extension, Node.js API, React web app, OpenSearch.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "engines": {
     "node": ">=22.12"
